@@ -90,6 +90,11 @@ export default function CameraScreen() {
     }
   };
 
+  const handleSavedPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/saved");
+  };
+
   const handleProfilePress = () => {
     Alert.alert(
       user?.firstName ? `Olá, ${user.firstName}!` : "Perfil",
@@ -124,14 +129,19 @@ export default function CameraScreen() {
           <Text style={styles.logo}>OUR FIT</Text>
           <Text style={styles.tagline}>streetwear powered by AI</Text>
         </View>
-        <TouchableOpacity style={styles.profileBtn} onPress={handleProfilePress} activeOpacity={0.7}>
-          {user?.imageUrl ? (
-            <Image source={{ uri: user.imageUrl }} style={styles.profileImg} />
-          ) : (
-            <Feather name="user" size={18} color="#888888" />
-          )}
-          <View style={[styles.genderDot, gender === "feminino" && styles.genderDotFem]} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.savedBtn} onPress={handleSavedPress} activeOpacity={0.7}>
+            <Feather name="heart" size={18} color="#E8FF00" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.profileBtn} onPress={handleProfilePress} activeOpacity={0.7}>
+            {user?.imageUrl ? (
+              <Image source={{ uri: user.imageUrl }} style={styles.profileImg} />
+            ) : (
+              <Feather name="user" size={18} color="#888888" />
+            )}
+            <View style={[styles.genderDot, gender === "feminino" && styles.genderDotFem]} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.center}>
@@ -214,6 +224,21 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginTop: 2,
     textTransform: "lowercase",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  savedBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
   },
   profileBtn: {
     width: 44,

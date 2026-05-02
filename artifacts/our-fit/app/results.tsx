@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,10 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useUser } from "@clerk/expo";
 import { useFit, Outfit } from "@/contexts/FitContext";
-import { analyzeOutfit } from "@/lib/api";
+import { analyzeOutfitConcepts, generateOutfitImage, OutfitConcept } from "@/lib/api";
 import OutfitCard from "@/components/OutfitCard";
-import LoadingView from "@/components/LoadingView";
 
 export default function ResultsScreen() {
   const insets = useSafeAreaInsets();
@@ -24,55 +24,95 @@ export default function ResultsScreen() {
     setItemDescription,
     currentOutfits,
     setCurrentOutfits,
+    updateOutfit,
     setSelectedOutfit,
     gender,
+    likedIds,
+    toggleLike,
   } = useFit();
+  const { user } = useUser();
 
-  const [loading, setLoading] = useState(true);
+  const [conceptsLoaded, setConceptsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!capturedImage) {
       router.replace("/");
       return;
     }
-    loadOutfits();
+    loadConcepts();
   }, []);
 
-  const loadOutfits = async () => {
+  const loadConcepts = async () => {
     if (!capturedImage) return;
-    setLoading(true);
     setError(null);
+    setConceptsLoaded(false);
+    setCurrentOutfits([]);
+
     try {
-      const result = await analyzeOutfit(capturedImage, gender);
-      setCurrentOutfits(result.outfits);
-      setItemDescription(result.itemDescription);
-    } catch (err) {
+      const { concepts, itemDescription } = await analyzeOutfitConcepts(capturedImage, gender);
+      setItemDescription(itemDescription);
+
+      // Show skeleton cards immediately
+      const skeletons: Outfit[] = concepts.map((c) => ({
+        id: c.id,
+        title: c.title,
+        style: c.style,
+        items: c.items,
+        tags: c.tags,
+        image: "",
+      }));
+      setCurrentOutfits(skeletons);
+      setConceptsLoaded(true);
+
+      // Mark all as loading
+      setLoadingImages(new Set(concepts.map((c) => c.id)));
+
+      // Generate all images in parallel
+      await Promise.all(
+        concepts.map(async (concept) => {
+          try {
+            const outfit = await generateOutfitImage(concept);
+            updateOutfit(outfit);
+          } catch {
+            // keep skeleton if image fails
+          } finally {
+            setLoadingImages((prev) => {
+              const next = new Set(prev);
+              next.delete(concept.id);
+              return next;
+            });
+          }
+        })
+      );
+    } catch {
       setError("Não foi possível gerar looks. Tente novamente.");
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleOutfitPress = (outfit: Outfit) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedOutfit(outfit);
-    router.push("/explore");
+    router.push("/outfit-detail");
   };
 
-  const topPadding =
-    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
-  const bottomPadding =
-    Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
+  const handleLike = useCallback(
+    (outfit: Outfit) => {
+      if (user?.id) toggleLike(outfit, user.id);
+    },
+    [user, toggleLike]
+  );
 
-  if (loading) return <LoadingView />;
+  const topPadding = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const bottomPadding = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
 
   if (error) {
     return (
       <View style={[styles.errorContainer, { paddingTop: topPadding }]}>
         <Feather name="alert-circle" size={40} color="#FF3B30" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={loadOutfits}>
+        <TouchableOpacity style={styles.retryBtn} onPress={loadConcepts}>
           <Text style={styles.retryText}>Tentar novamente</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.back()}>
@@ -82,19 +122,24 @@ export default function ResultsScreen() {
     );
   }
 
+  const imagesLoading = loadingImages.size > 0;
+  const readyCount = currentOutfits.filter((o) => o.image !== "").length;
+
   return (
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
       <View style={[styles.header, { paddingTop: topPadding }]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerLogo}>OUR FIT</Text>
-          <Text style={styles.headerSub}>6 looks para você</Text>
+          <Text style={styles.headerSub}>
+            {!conceptsLoaded
+              ? "Analisando sua peça..."
+              : imagesLoading
+              ? `${readyCount} de 6 looks prontos`
+              : "6 looks para você"}
+          </Text>
         </View>
         {capturedImage ? (
           <Image
@@ -106,29 +151,42 @@ export default function ResultsScreen() {
         )}
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.row}>
-          {currentOutfits.map((outfit, i) => (
-            <OutfitCard key={outfit.id + i} outfit={outfit} onPress={handleOutfitPress} />
-          ))}
+      {!conceptsLoaded ? (
+        <View style={styles.loadingCenter}>
+          <View style={styles.loadingRing} />
+          <Text style={styles.loadingText}>Criando seus looks...</Text>
+          <Text style={styles.loadingSub}>Isso leva alguns segundos</Text>
         </View>
-
-        <Text style={styles.tapHint}>
-          Toque em um look para explorar mais opções
-        </Text>
-      </ScrollView>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.grid}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.row}>
+            {currentOutfits.map((outfit, i) => (
+              <OutfitCard
+                key={outfit.id + i}
+                outfit={outfit}
+                onPress={handleOutfitPress}
+                onLike={handleLike}
+                isLiked={likedIds.has(outfit.id)}
+                loading={loadingImages.has(outfit.id)}
+              />
+            ))}
+          </View>
+          {!imagesLoading && (
+            <Text style={styles.tapHint}>
+              Toque em um look para ver em detalhes
+            </Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-  },
+  container: { flex: 1, backgroundColor: "#0A0A0A" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -139,89 +197,35 @@ const styles = StyleSheet.create({
     borderBottomColor: "#1E1E1E",
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#1A1A1A",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center",
   },
-  headerCenter: {
-    alignItems: "center",
+  headerCenter: { alignItems: "center" },
+  headerLogo: { color: "#E8FF00", fontSize: 18, fontFamily: "Inter_700Bold", letterSpacing: 5 },
+  headerSub: { color: "#888888", fontSize: 11, fontFamily: "Inter_400Regular", letterSpacing: 0.5, marginTop: 2 },
+  thumbImage: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#2A2A2A" },
+  thumbPlaceholder: { width: 40, height: 40 },
+  loadingCenter: {
+    flex: 1, alignItems: "center", justifyContent: "center", gap: 16,
   },
-  headerLogo: {
-    color: "#E8FF00",
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 5,
+  loadingRing: {
+    width: 60, height: 60, borderRadius: 30,
+    borderWidth: 2, borderColor: "#E8FF00", borderTopColor: "transparent",
   },
-  headerSub: {
-    color: "#888888",
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-  thumbImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-  },
-  thumbPlaceholder: {
-    width: 40,
-    height: 40,
-  },
-  grid: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  row: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "space-between",
-  },
+  loadingText: { color: "#FFFFFF", fontSize: 16, fontFamily: "Inter_500Medium" },
+  loadingSub: { color: "#555555", fontSize: 13, fontFamily: "Inter_400Regular" },
+  grid: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   tapHint: {
-    color: "#444444",
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    marginTop: 24,
-    letterSpacing: 0.3,
+    color: "#444444", fontSize: 12, fontFamily: "Inter_400Regular",
+    textAlign: "center", marginTop: 24, letterSpacing: 0.3,
   },
   errorContainer: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    padding: 24,
+    flex: 1, backgroundColor: "#0A0A0A", alignItems: "center",
+    justifyContent: "center", gap: 16, padding: 24,
   },
-  errorText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
-  retryBtn: {
-    backgroundColor: "#E8FF00",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  retryText: {
-    color: "#0A0A0A",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  backLink: {
-    color: "#888888",
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textDecorationLine: "underline",
-  },
+  errorText: { color: "#FFFFFF", fontSize: 16, fontFamily: "Inter_400Regular", textAlign: "center" },
+  retryBtn: { backgroundColor: "#E8FF00", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 8 },
+  retryText: { color: "#0A0A0A", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  backLink: { color: "#888888", fontSize: 14, fontFamily: "Inter_400Regular", textDecorationLine: "underline" },
 });

@@ -33,6 +33,8 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="results" />
       <Stack.Screen name="explore" />
+      <Stack.Screen name="outfit-detail" />
+      <Stack.Screen name="saved" />
     </Stack>
   );
 }
@@ -50,8 +52,6 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ClerkProvider
