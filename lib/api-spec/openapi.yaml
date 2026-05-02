@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: outfits
+    description: Streetwear outfit analysis and suggestions
 paths:
   /healthz:
     get:
@@ -24,6 +26,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /outfits/analyze:
+    post:
+      operationId: analyzeOutfit
+      tags: [outfits]
+      summary: Analyze clothing item and generate outfit suggestions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeOutfitBody"
+      responses:
+        "200":
+          description: Outfit suggestions generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutfitSuggestionsResponse"
+  /outfits/explore:
+    post:
+      operationId: exploreOutfits
+      tags: [outfits]
+      summary: Explore more outfit options based on a selected outfit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExploreOutfitsBody"
+      responses:
+        "200":
+          description: More outfit suggestions generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutfitSuggestionsResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +71,60 @@ components:
           type: string
       required:
         - status
-
+    AnalyzeOutfitBody:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+          description: Base64 encoded image of the clothing item
+      required:
+        - imageBase64
+    ExploreOutfitsBody:
+      type: object
+      properties:
+        itemDescription:
+          type: string
+          description: Description of the original clothing item
+        selectedOutfit:
+          $ref: "#/components/schemas/OutfitItem"
+      required:
+        - itemDescription
+        - selectedOutfit
+    OutfitItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        style:
+          type: string
+        items:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        image:
+          type: string
+          description: Base64 encoded outfit image
+      required:
+        - id
+        - title
+        - style
+        - items
+        - tags
+        - image
+    OutfitSuggestionsResponse:
+      type: object
+      properties:
+        outfits:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutfitItem"
+        itemDescription:
+          type: string
+      required:
+        - outfits

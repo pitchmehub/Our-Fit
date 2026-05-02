@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./analyzeOutfitBody";
+export * from "./exploreOutfitsBody";
 export * from "./healthStatus";
+export * from "./outfitItem";
+export * from "./outfitSuggestionsResponse";

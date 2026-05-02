@@ -8,3 +8,29 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface AnalyzeOutfitBody {
+  /** Base64 encoded image of the clothing item */
+  imageBase64: string;
+}
+
+export interface OutfitItem {
+  id: string;
+  title: string;
+  style: string;
+  items: string[];
+  tags: string[];
+  /** Base64 encoded outfit image */
+  image: string;
+}
+
+export interface ExploreOutfitsBody {
+  /** Description of the original clothing item */
+  itemDescription: string;
+  selectedOutfit: OutfitItem;
+}
+
+export interface OutfitSuggestionsResponse {
+  outfits: OutfitItem[];
+  itemDescription?: string;
+}

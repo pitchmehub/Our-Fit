@@ -5,18 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AnalyzeOutfitBody,
+  ExploreOutfitsBody,
+  HealthStatus,
+  OutfitSuggestionsResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +107,175 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Analyze clothing item and generate outfit suggestions
+ */
+export const getAnalyzeOutfitUrl = () => {
+  return `/api/outfits/analyze`;
+};
+
+export const analyzeOutfit = async (
+  analyzeOutfitBody: AnalyzeOutfitBody,
+  options?: RequestInit,
+): Promise<OutfitSuggestionsResponse> => {
+  return customFetch<OutfitSuggestionsResponse>(getAnalyzeOutfitUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(analyzeOutfitBody),
+  });
+};
+
+export const getAnalyzeOutfitMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeOutfit>>,
+    TError,
+    { data: BodyType<AnalyzeOutfitBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeOutfit>>,
+  TError,
+  { data: BodyType<AnalyzeOutfitBody> },
+  TContext
+> => {
+  const mutationKey = ["analyzeOutfit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeOutfit>>,
+    { data: BodyType<AnalyzeOutfitBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return analyzeOutfit(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeOutfitMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeOutfit>>
+>;
+export type AnalyzeOutfitMutationBody = BodyType<AnalyzeOutfitBody>;
+export type AnalyzeOutfitMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Analyze clothing item and generate outfit suggestions
+ */
+export const useAnalyzeOutfit = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeOutfit>>,
+    TError,
+    { data: BodyType<AnalyzeOutfitBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeOutfit>>,
+  TError,
+  { data: BodyType<AnalyzeOutfitBody> },
+  TContext
+> => {
+  return useMutation(getAnalyzeOutfitMutationOptions(options));
+};
+
+/**
+ * @summary Explore more outfit options based on a selected outfit
+ */
+export const getExploreOutfitsUrl = () => {
+  return `/api/outfits/explore`;
+};
+
+export const exploreOutfits = async (
+  exploreOutfitsBody: ExploreOutfitsBody,
+  options?: RequestInit,
+): Promise<OutfitSuggestionsResponse> => {
+  return customFetch<OutfitSuggestionsResponse>(getExploreOutfitsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(exploreOutfitsBody),
+  });
+};
+
+export const getExploreOutfitsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof exploreOutfits>>,
+    TError,
+    { data: BodyType<ExploreOutfitsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof exploreOutfits>>,
+  TError,
+  { data: BodyType<ExploreOutfitsBody> },
+  TContext
+> => {
+  const mutationKey = ["exploreOutfits"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof exploreOutfits>>,
+    { data: BodyType<ExploreOutfitsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return exploreOutfits(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExploreOutfitsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof exploreOutfits>>
+>;
+export type ExploreOutfitsMutationBody = BodyType<ExploreOutfitsBody>;
+export type ExploreOutfitsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Explore more outfit options based on a selected outfit
+ */
+export const useExploreOutfits = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof exploreOutfits>>,
+    TError,
+    { data: BodyType<ExploreOutfitsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof exploreOutfits>>,
+  TError,
+  { data: BodyType<ExploreOutfitsBody> },
+  TContext
+> => {
+  return useMutation(getExploreOutfitsMutationOptions(options));
+};

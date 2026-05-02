@@ -14,3 +14,57 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Analyze clothing item and generate outfit suggestions
+ */
+export const AnalyzeOutfitBody = zod.object({
+  imageBase64: zod
+    .string()
+    .describe("Base64 encoded image of the clothing item"),
+});
+
+export const AnalyzeOutfitResponse = zod.object({
+  outfits: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      style: zod.string(),
+      items: zod.array(zod.string()),
+      tags: zod.array(zod.string()),
+      image: zod.string().describe("Base64 encoded outfit image"),
+    }),
+  ),
+  itemDescription: zod.string().optional(),
+});
+
+/**
+ * @summary Explore more outfit options based on a selected outfit
+ */
+export const ExploreOutfitsBody = zod.object({
+  itemDescription: zod
+    .string()
+    .describe("Description of the original clothing item"),
+  selectedOutfit: zod.object({
+    id: zod.string(),
+    title: zod.string(),
+    style: zod.string(),
+    items: zod.array(zod.string()),
+    tags: zod.array(zod.string()),
+    image: zod.string().describe("Base64 encoded outfit image"),
+  }),
+});
+
+export const ExploreOutfitsResponse = zod.object({
+  outfits: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      style: zod.string(),
+      items: zod.array(zod.string()),
+      tags: zod.array(zod.string()),
+      image: zod.string().describe("Base64 encoded outfit image"),
+    }),
+  ),
+  itemDescription: zod.string().optional(),
+});
