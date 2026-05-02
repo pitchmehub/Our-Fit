@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export type Gender = "masculino" | "feminino" | null;
 
 export interface Outfit {
   id: string;
@@ -18,6 +21,9 @@ interface FitContextType {
   setCurrentOutfits: (outfits: Outfit[]) => void;
   selectedOutfit: Outfit | null;
   setSelectedOutfit: (outfit: Outfit | null) => void;
+  gender: Gender;
+  setGender: (g: Gender) => void;
+  genderLoaded: boolean;
 }
 
 const FitContext = createContext<FitContextType | null>(null);
@@ -27,6 +33,26 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
   const [itemDescription, setItemDescription] = useState<string>("");
   const [currentOutfits, setCurrentOutfits] = useState<Outfit[]>([]);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+  const [gender, setGenderState] = useState<Gender>(null);
+  const [genderLoaded, setGenderLoaded] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("our_fit_gender").then((val) => {
+      if (val === "masculino" || val === "feminino") {
+        setGenderState(val);
+      }
+      setGenderLoaded(true);
+    });
+  }, []);
+
+  const setGender = async (g: Gender) => {
+    setGenderState(g);
+    if (g) {
+      await AsyncStorage.setItem("our_fit_gender", g);
+    } else {
+      await AsyncStorage.removeItem("our_fit_gender");
+    }
+  };
 
   return (
     <FitContext.Provider
@@ -39,6 +65,9 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
         setCurrentOutfits,
         selectedOutfit,
         setSelectedOutfit,
+        gender,
+        setGender,
+        genderLoaded,
       }}
     >
       {children}

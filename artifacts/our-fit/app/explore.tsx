@@ -24,6 +24,7 @@ export default function ExploreScreen() {
     setSelectedOutfit,
     currentOutfits,
     setCurrentOutfits,
+    gender,
   } = useFit();
 
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export default function ExploreScreen() {
     setLoading(true);
     setError(null);
     try {
-      const result = await exploreOutfits(itemDescription, outfit);
+      const result = await exploreOutfits(itemDescription, outfit, gender);
       setDisplayedOutfits(result.outfits);
     } catch {
       setError("Não foi possível carregar mais looks. Tente novamente.");

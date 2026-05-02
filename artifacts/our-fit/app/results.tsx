@@ -25,6 +25,7 @@ export default function ResultsScreen() {
     currentOutfits,
     setCurrentOutfits,
     setSelectedOutfit,
+    gender,
   } = useFit();
 
   const [loading, setLoading] = useState(true);
@@ -43,7 +44,7 @@ export default function ResultsScreen() {
     setLoading(true);
     setError(null);
     try {
-      const result = await analyzeOutfit(capturedImage);
+      const result = await analyzeOutfit(capturedImage, gender);
       setCurrentOutfits(result.outfits);
       setItemDescription(result.itemDescription);
     } catch (err) {

@@ -14,11 +14,14 @@ import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
+import { useAuth, useUser } from "@clerk/expo";
 import { useFit } from "@/contexts/FitContext";
 
 export default function CameraScreen() {
   const insets = useSafeAreaInsets();
-  const { setCapturedImage } = useFit();
+  const { setCapturedImage, gender, setGender } = useFit();
+  const { signOut } = useAuth();
+  const { user } = useUser();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -35,8 +38,7 @@ export default function CameraScreen() {
         return;
       }
     } else {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permissão necessária",
@@ -88,6 +90,28 @@ export default function CameraScreen() {
     }
   };
 
+  const handleProfilePress = () => {
+    Alert.alert(
+      user?.firstName ? `Olá, ${user.firstName}!` : "Perfil",
+      `Gênero: ${gender === "masculino" ? "Masculino" : "Feminino"}`,
+      [
+        {
+          text: "Trocar gênero",
+          onPress: async () => {
+            await setGender(null);
+            router.replace("/onboarding");
+          },
+        },
+        {
+          text: "Sair",
+          style: "destructive",
+          onPress: () => signOut(),
+        },
+        { text: "Cancelar", style: "cancel" },
+      ]
+    );
+  };
+
   const topPadding =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const bottomPadding =
@@ -96,8 +120,18 @@ export default function CameraScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPadding, paddingBottom: bottomPadding }]}>
       <View style={styles.header}>
-        <Text style={styles.logo}>OUR FIT</Text>
-        <Text style={styles.tagline}>streetwear powered by AI</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.logo}>OUR FIT</Text>
+          <Text style={styles.tagline}>streetwear powered by AI</Text>
+        </View>
+        <TouchableOpacity style={styles.profileBtn} onPress={handleProfilePress} activeOpacity={0.7}>
+          {user?.imageUrl ? (
+            <Image source={{ uri: user.imageUrl }} style={styles.profileImg} />
+          ) : (
+            <Feather name="user" size={18} color="#888888" />
+          )}
+          <View style={[styles.genderDot, gender === "feminino" && styles.genderDotFem]} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.center}>
@@ -157,22 +191,58 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   header: {
+    width: "100%",
+    flexDirection: "row",
     alignItems: "center",
-    paddingTop: 24,
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  headerLeft: {
+    alignItems: "flex-start",
   },
   logo: {
     color: "#E8FF00",
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: "Inter_700Bold",
     letterSpacing: 8,
   },
   tagline: {
-    color: "#888888",
-    fontSize: 12,
+    color: "#444444",
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     letterSpacing: 2,
-    marginTop: 4,
+    marginTop: 2,
     textTransform: "lowercase",
+  },
+  profileBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  profileImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  genderDot: {
+    position: "absolute",
+    bottom: 1,
+    right: 1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#4A90E2",
+    borderWidth: 1.5,
+    borderColor: "#0A0A0A",
+  },
+  genderDotFem: {
+    backgroundColor: "#E87EAA",
   },
   center: {
     flex: 1,
