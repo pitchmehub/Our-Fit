@@ -2,16 +2,6 @@ const BASE = import.meta.env.VITE_API_DOMAIN
   ? `https://${import.meta.env.VITE_API_DOMAIN}`
   : "";
 
-export interface OutfitConcept {
-  id: string;
-  title: string;
-  style: string;
-  items: string[];
-  tags: string[];
-  imagePrompt: string;
-  basePieceDescription: string;
-}
-
 export interface Outfit {
   id: string;
   title: string;
@@ -21,37 +11,33 @@ export interface Outfit {
   image: string;
 }
 
-export async function analyzeOutfitConcepts(imageBase64: string, gender?: string | null): Promise<{ concepts: OutfitConcept[]; itemDescription: string }> {
-  const res = await fetch(`${BASE}/api/outfits/analyze`, {
+// Single combined call: analyze + generate images server-side
+export async function generateOutfits(
+  imageBase64: string,
+  gender?: string | null,
+): Promise<{ outfits: Outfit[]; itemDescription: string }> {
+  const res = await fetch(`${BASE}/api/outfits/generate`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ imageBase64, gender: gender || undefined }),
   });
-  if (!res.ok) throw new Error("Failed to analyze outfit concepts");
+  if (!res.ok) throw new Error("Falha ao gerar looks");
   return res.json();
 }
 
-export async function generateOutfitImage(concept: OutfitConcept): Promise<Outfit> {
-  const res = await fetch(`${BASE}/api/outfits/generate-image`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ concept }),
-  });
-  if (!res.ok) throw new Error("Failed to generate outfit image");
-  const data = await res.json();
-  return data.outfit;
-}
-
-export async function exploreOutfitConcepts(itemDescription: string, selectedOutfit: Outfit, gender?: string | null): Promise<{ concepts: OutfitConcept[]; itemDescription: string }> {
+export async function exploreOutfits(
+  itemDescription: string,
+  selectedOutfit: Outfit,
+  gender?: string | null,
+): Promise<{ outfits: Outfit[]; itemDescription: string }> {
   const res = await fetch(`${BASE}/api/outfits/explore`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ itemDescription, selectedOutfit, gender: gender || undefined }),
   });
-  if (!res.ok) throw new Error("Failed to explore outfit concepts");
+  if (!res.ok) throw new Error("Falha ao explorar looks");
   return res.json();
 }
 

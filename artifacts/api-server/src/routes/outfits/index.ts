@@ -36,8 +36,41 @@ function getGenderContext(gender: string | undefined): string {
   return "neutro/unissex. Priorize peças versáteis de streetwear.";
 }
 
-// Step 1: analyze photo + generate concepts in a single vision call (fast ~4-6s)
-router.post("/outfits/analyze", async (req, res) => {
+async function generateSingleImage(concept: OutfitConcept): Promise<OutfitResult> {
+  const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
+  const prompt = `Streetwear fashion flat lay, perfectly centered overhead top-down view on a clean white background. All clothing items fully visible, nothing cropped or cut off. ${concept.imagePrompt}. Items neatly arranged: main piece prominently in center, supporting pieces spread around it. No people, no mannequins, no body parts. Professional studio fashion photography, sharp and bright lighting, Pinterest aesthetic.`;
+
+  try {
+    const buffer = await generateImageBuffer(prompt, "512x512", "dall-e-2");
+    return { ...rest, image: buffer.toString("base64") };
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes("safety") || errMsg.includes("400") || errMsg.includes("content")) {
+      try {
+        const safePrompt = `Fashion flat lay, overhead view on white background. ${concept.imagePrompt}. All items fully visible. No people.`;
+        const buffer2 = await generateImageBuffer(safePrompt, "512x512", "dall-e-2");
+        return { ...rest, image: buffer2.toString("base64") };
+      } catch {
+        // fall through
+      }
+    }
+    return { ...rest, image: "" };
+  }
+}
+
+// Generate images in batches to respect DALL-E rate limits (max 2 concurrent)
+async function generateImagesInBatches(concepts: OutfitConcept[], batchSize = 2): Promise<OutfitResult[]> {
+  const results: OutfitResult[] = [];
+  for (let i = 0; i < concepts.length; i += batchSize) {
+    const batch = concepts.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(generateSingleImage));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+// Combined: analyze photo + generate images in one call (no rate limit issues)
+router.post("/outfits/generate", async (req, res) => {
   const { imageBase64, gender } = req.body as {
     imageBase64: string;
     gender?: string;
@@ -52,7 +85,7 @@ router.post("/outfits/analyze", async (req, res) => {
 
   const response = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
-    max_completion_tokens: 1500,
+    max_completion_tokens: 1200,
     messages: [
       {
         role: "user",
@@ -65,7 +98,7 @@ router.post("/outfits/analyze", async (req, res) => {
             type: "text",
             text: `Você é um stylist de streetwear para público ${genderCtx}
 
-Analise a peça de roupa na imagem e crie 6 looks streetwear distintos usando ela como base.
+Analise a peça de roupa na imagem e crie 4 looks streetwear distintos usando ela como base.
 
 Retorne APENAS um JSON válido com este formato exato:
 {
@@ -98,7 +131,7 @@ Retorne APENAS um JSON válido com este formato exato:
         concepts: Omit<OutfitConcept, "id" | "basePieceDescription">[];
       };
       itemDescription = parsed.itemDescription ?? itemDescription;
-      concepts = (parsed.concepts ?? []).map((c, i) => ({
+      concepts = (parsed.concepts ?? []).slice(0, 4).map((c, i) => ({
         ...c,
         id: `outfit-${Date.now()}-${i}`,
         basePieceDescription: itemDescription,
@@ -108,45 +141,13 @@ Retorne APENAS um JSON válido com este formato exato:
     }
   }
 
-  res.json({ concepts, itemDescription });
+  // Generate images server-side in batches of 2 — respects DALL-E rate limits
+  const outfits = await generateImagesInBatches(concepts, 2);
+
+  res.json({ outfits, itemDescription });
 });
 
-// Step 2: generate one outfit image (called per-concept from client)
-router.post("/outfits/generate-image", async (req, res) => {
-  const { concept } = req.body as { concept: OutfitConcept };
-
-  if (!concept) {
-    res.status(400).json({ error: "concept is required" });
-    return;
-  }
-
-  const prompt = `Streetwear fashion flat lay, perfectly centered overhead top-down view on a clean white background. All clothing items fully visible, nothing cropped or cut off. ${concept.imagePrompt}. Items neatly arranged: main piece prominently in center, supporting pieces spread around it. No people, no mannequins, no body parts. Professional studio fashion photography, sharp and bright lighting, Pinterest aesthetic.`;
-
-  try {
-    const buffer = await generateImageBuffer(prompt, "512x512", "dall-e-2");
-    const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
-    const result: OutfitResult = { ...rest, image: buffer.toString("base64") };
-    res.json({ outfit: result });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    if (errMsg.includes("safety") || errMsg.includes("400") || errMsg.includes("content")) {
-      try {
-        const safePrompt = `Fashion flat lay, overhead view on white background. ${concept.imagePrompt}. All items fully visible. No people.`;
-        const buffer2 = await generateImageBuffer(safePrompt, "512x512", "dall-e-2");
-        const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
-        const result: OutfitResult = { ...rest, image: buffer2.toString("base64") };
-        res.json({ outfit: result });
-        return;
-      } catch {
-        // fall through
-      }
-    }
-    const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
-    res.json({ outfit: { ...rest, image: "" } });
-  }
-});
-
-// Explore: generate 6 more concepts (client fetches images individually)
+// Explore: generate 4 more concepts + images in one call
 router.post("/outfits/explore", async (req, res) => {
   const { itemDescription, selectedOutfit, gender } = req.body as {
     itemDescription: string;
@@ -163,7 +164,7 @@ router.post("/outfits/explore", async (req, res) => {
 
   const conceptsResponse = await openai.chat.completions.create({
     model: "gpt-4.1-mini",
-    max_completion_tokens: 1500,
+    max_completion_tokens: 1200,
     messages: [
       {
         role: "user",
@@ -172,9 +173,9 @@ router.post("/outfits/explore", async (req, res) => {
 Peça base do usuário: "${itemDescription}"
 Look que o usuário gostou: "${selectedOutfit.title}" — ${selectedOutfit.style}
 
-REGRA: Em TODOS os 6 novos looks, a peça base DEVE estar presente como protagonista.
+REGRA: Em TODOS os 4 novos looks, a peça base DEVE estar presente como protagonista.
 
-Gere 6 NOVOS looks com estilos e paletas diferentes. Retorne APENAS JSON:
+Gere 4 NOVOS looks com estilos e paletas diferentes. Retorne APENAS JSON:
 [
   {
     "title": "Nome do look",
@@ -195,7 +196,7 @@ Gere 6 NOVOS looks com estilos e paletas diferentes. Retorne APENAS JSON:
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]) as Omit<OutfitConcept, "id" | "basePieceDescription">[];
-      concepts = parsed.map((c, i) => ({
+      concepts = parsed.slice(0, 4).map((c, i) => ({
         ...c,
         id: `outfit-${Date.now()}-${i}`,
         basePieceDescription: itemDescription,
@@ -205,7 +206,9 @@ Gere 6 NOVOS looks com estilos e paletas diferentes. Retorne APENAS JSON:
     }
   }
 
-  res.json({ concepts, itemDescription });
+  const outfits = await generateImagesInBatches(concepts, 2);
+
+  res.json({ outfits, itemDescription });
 });
 
 // Like an outfit

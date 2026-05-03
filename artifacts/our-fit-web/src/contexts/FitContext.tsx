@@ -4,14 +4,12 @@ import { likeOutfit, unlikeOutfit, Outfit } from "@/lib/api";
 export type Gender = "Masculino" | "Feminino" | null;
 
 interface FitContextType {
-  userId: string | null;
   capturedImage: string | null;
   setCapturedImage: (img: string | null) => void;
   itemDescription: string;
   setItemDescription: (desc: string) => void;
   currentOutfits: Outfit[];
   setCurrentOutfits: (outfits: Outfit[]) => void;
-  updateOutfit: (outfit: Outfit) => void;
   selectedOutfit: Outfit | null;
   setSelectedOutfit: (outfit: Outfit | null) => void;
   gender: Gender;
@@ -43,7 +41,9 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
     if (storedLikes) {
       try {
         setLikedIds(new Set(JSON.parse(storedLikes)));
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
     }
   }, []);
 
@@ -51,10 +51,6 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
     setGenderState(g);
     if (g) localStorage.setItem("our_fit_gender", g);
     else localStorage.removeItem("our_fit_gender");
-  };
-
-  const updateOutfit = (outfit: Outfit) => {
-    setCurrentOutfits((prev) => prev.map((o) => (o.id === outfit.id ? outfit : o)));
   };
 
   const toggleLike = async (outfit: Outfit) => {
@@ -74,14 +70,12 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
   return (
     <FitContext.Provider
       value={{
-        userId: null,
         capturedImage,
         setCapturedImage,
         itemDescription,
         setItemDescription,
         currentOutfits,
         setCurrentOutfits,
-        updateOutfit,
         selectedOutfit,
         setSelectedOutfit,
         gender,
