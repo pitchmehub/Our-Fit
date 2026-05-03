@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/web/"
+title = "OUR FIT — Web"
+version = "1.0.0"
+id = "artifacts/our-fit-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/web/" ]
+localPort = 23617
+
+[services.development]
+run = "VITE_CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY VITE_API_DOMAIN=$REPLIT_DEV_DOMAIN pnpm --filter @workspace/our-fit-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/our-fit-web", "run", "build" ]
+publicDir = "artifacts/our-fit-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23617"
+BASE_PATH = "/web/"
