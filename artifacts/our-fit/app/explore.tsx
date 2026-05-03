@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useUser } from "@clerk/expo";
 import { useFit, Outfit } from "@/contexts/FitContext";
 import { exploreOutfitConcepts, generateOutfitImage } from "@/lib/api";
@@ -41,11 +42,14 @@ export default function ExploreScreen() {
     loadMore(selectedOutfit);
   }, []);
 
+  const KEEP_AWAKE_TAG = "explore-generation";
+
   const loadMore = async (outfit: Outfit) => {
     setError(null);
     setConceptsLoaded(false);
     setDisplayedOutfits([]);
 
+    await activateKeepAwakeAsync(KEEP_AWAKE_TAG);
     try {
       const { concepts } = await exploreOutfitConcepts(itemDescription, outfit, gender);
 
@@ -76,6 +80,8 @@ export default function ExploreScreen() {
       );
     } catch {
       setError("Não foi possível carregar mais looks. Tente novamente.");
+    } finally {
+      deactivateKeepAwake(KEEP_AWAKE_TAG);
     }
   };
 

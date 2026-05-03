@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -12,9 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useUser } from "@clerk/expo";
 import { useFit, Outfit } from "@/contexts/FitContext";
-import { analyzeOutfitConcepts, generateOutfitImage, OutfitConcept } from "@/lib/api";
+import { analyzeOutfitConcepts, generateOutfitImage } from "@/lib/api";
 import OutfitCard from "@/components/OutfitCard";
 
 export default function ResultsScreen() {
@@ -44,17 +45,19 @@ export default function ResultsScreen() {
     loadConcepts();
   }, []);
 
+  const KEEP_AWAKE_TAG = "results-generation";
+
   const loadConcepts = async () => {
     if (!capturedImage) return;
     setError(null);
     setConceptsLoaded(false);
     setCurrentOutfits([]);
 
+    await activateKeepAwakeAsync(KEEP_AWAKE_TAG);
     try {
       const { concepts, itemDescription } = await analyzeOutfitConcepts(capturedImage, gender);
       setItemDescription(itemDescription);
 
-      // Show skeleton cards immediately
       const skeletons: Outfit[] = concepts.map((c) => ({
         id: c.id,
         title: c.title,
@@ -65,11 +68,8 @@ export default function ResultsScreen() {
       }));
       setCurrentOutfits(skeletons);
       setConceptsLoaded(true);
-
-      // Mark all as loading
       setLoadingImages(new Set(concepts.map((c) => c.id)));
 
-      // Generate all images in parallel
       await Promise.all(
         concepts.map(async (concept) => {
           try {
@@ -88,6 +88,8 @@ export default function ResultsScreen() {
       );
     } catch {
       setError("Não foi possível gerar looks. Tente novamente.");
+    } finally {
+      deactivateKeepAwake(KEEP_AWAKE_TAG);
     }
   };
 
