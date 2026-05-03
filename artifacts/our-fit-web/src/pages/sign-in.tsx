@@ -54,6 +54,8 @@ export default function SignInPage() {
       ) : (
         <div className="w-full max-w-md">
           <SignIn
+            forceRedirectUrl="/web/"
+            fallbackRedirectUrl="/web/"
             appearance={{
               elements: {
                 card: "bg-card border border-border shadow-xl rounded-xl",
