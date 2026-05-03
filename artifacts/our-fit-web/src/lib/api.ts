@@ -1,4 +1,6 @@
-const BASE = `https://${import.meta.env.VITE_API_DOMAIN}`;
+const BASE = import.meta.env.VITE_API_DOMAIN
+  ? `https://${import.meta.env.VITE_API_DOMAIN}`
+  : "";
 
 export interface OutfitConcept {
   id: string;
