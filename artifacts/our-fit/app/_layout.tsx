@@ -20,7 +20,18 @@ import { FitProvider } from "@/contexts/FitContext";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+      staleTime: 30000,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;

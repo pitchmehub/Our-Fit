@@ -16,6 +16,21 @@ function getBaseUrl(): string {
   return "";
 }
 
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs = 90000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Step 1: get concepts fast (no images)
 export async function analyzeOutfitConcepts(
   imageBase64: string,

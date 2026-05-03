@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  Animated,
+  Easing,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
