@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { likeOutfit, unlikeOutfit, Outfit } from "@/lib/api";
-import { getDeviceId } from "@/lib/device";
 
 export type Gender = "Masculino" | "Feminino" | null;
 
 interface FitContextType {
-  userId: string;
+  userId: string | null;
   capturedImage: string | null;
   setCapturedImage: (img: string | null) => void;
   itemDescription: string;
@@ -25,7 +24,6 @@ interface FitContextType {
 const FitContext = createContext<FitContextType | null>(null);
 
 export function FitProvider({ children }: { children: React.ReactNode }) {
-  const [userId] = useState<string>(() => getDeviceId());
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [itemDescription, setItemDescription] = useState<string>("");
   const [currentOutfits, setCurrentOutfits] = useState<Outfit[]>([]);
@@ -64,10 +62,10 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
     const newSet = new Set(likedIds);
     if (isLiked) {
       newSet.delete(outfit.id);
-      unlikeOutfit(userId, outfit.id).catch(() => {});
+      unlikeOutfit(outfit.id).catch(() => {});
     } else {
       newSet.add(outfit.id);
-      likeOutfit(userId, outfit).catch(() => {});
+      likeOutfit(outfit).catch(() => {});
     }
     setLikedIds(newSet);
     localStorage.setItem("our_fit_liked_ids", JSON.stringify([...newSet]));
@@ -76,7 +74,7 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
   return (
     <FitContext.Provider
       value={{
-        userId,
+        userId: null,
         capturedImage,
         setCapturedImage,
         itemDescription,

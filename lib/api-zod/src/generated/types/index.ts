@@ -7,7 +7,12 @@
  */
 
 export * from "./analyzeOutfitBody";
+export * from "./authUser";
+export * from "./exchangeMobileAuthorizationCodeBody";
+export * from "./exchangeMobileAuthorizationCodeResponse";
 export * from "./exploreOutfitsBody";
+export * from "./getCurrentAuthUserResponse";
 export * from "./healthStatus";
+export * from "./logoutMobileSessionResponse";
 export * from "./outfitItem";
 export * from "./outfitSuggestionsResponse";

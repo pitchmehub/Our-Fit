@@ -1,12 +1,14 @@
 import { useState, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { useFit } from "@/contexts/FitContext";
-import { Camera, Image as ImageIcon, Heart, Grid } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { Camera, Image as ImageIcon, Heart, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
   const { setCapturedImage, gender, setGender } = useFit();
+  const { user, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -32,16 +34,25 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold tracking-widest text-primary font-mono">OUR FIT</h1>
           <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">streetwear powered by AI</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Link href="/saved" className="h-10 w-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors">
             <Heart size={18} />
           </Link>
           <button
             onClick={() => { setGender(null); setLocation("/onboarding"); }}
-            className="h-10 px-4 rounded-full border border-border bg-card text-xs text-muted-foreground hover:bg-muted transition-colors"
+            className="h-10 px-3 rounded-full border border-border bg-card text-xs text-muted-foreground hover:bg-muted transition-colors"
           >
             {gender || "Gênero"}
           </button>
+          {user && (
+            <button
+              onClick={logout}
+              className="h-10 w-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground"
+              title="Sair"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -88,7 +99,7 @@ export default function HomePage() {
           </button>
 
           <Link href="/saved" className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground">
-            <Grid size={24} />
+            <Heart size={24} />
           </Link>
         </div>
 
@@ -96,11 +107,7 @@ export default function HomePage() {
 
         {preview && (
           <div className="w-full mt-8">
-            <Button
-              size="lg"
-              className="w-full h-14 text-lg font-bold"
-              onClick={() => setLocation("/results")}
-            >
+            <Button size="lg" className="w-full h-14 text-lg font-bold" onClick={() => setLocation("/results")}>
               Gerar Looks
             </Button>
           </div>

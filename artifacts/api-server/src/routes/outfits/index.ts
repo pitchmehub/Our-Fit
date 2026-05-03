@@ -210,10 +210,15 @@ Gere 6 NOVOS looks com estilos e paletas diferentes. Retorne APENAS JSON:
 
 // Like an outfit
 router.post("/outfits/like", async (req, res) => {
-  const { userId, outfit } = req.body as { userId: string; outfit: OutfitResult };
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { outfit } = req.body as { outfit: OutfitResult };
+  const userId = req.user.id;
 
-  if (!userId || !outfit) {
-    res.status(400).json({ error: "userId and outfit are required" });
+  if (!outfit) {
+    res.status(400).json({ error: "outfit is required" });
     return;
   }
 
@@ -242,13 +247,12 @@ router.post("/outfits/like", async (req, res) => {
 
 // Unlike an outfit
 router.delete("/outfits/like/:outfitId", async (req, res) => {
-  const { outfitId } = req.params;
-  const { userId } = req.body as { userId: string };
-
-  if (!userId) {
-    res.status(400).json({ error: "userId is required" });
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const { outfitId } = req.params;
+  const userId = req.user.id;
 
   await db
     .delete(likedOutfits)
@@ -259,12 +263,11 @@ router.delete("/outfits/like/:outfitId", async (req, res) => {
 
 // Get liked outfits
 router.get("/outfits/liked", async (req, res) => {
-  const { userId } = req.query as { userId: string };
-
-  if (!userId) {
-    res.status(400).json({ error: "userId is required" });
+  if (!req.isAuthenticated()) {
+    res.json({ outfits: [] });
     return;
   }
+  const userId = req.user.id;
 
   const rows = await db
     .select()

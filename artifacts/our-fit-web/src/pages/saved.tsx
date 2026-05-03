@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 
 export default function SavedPage() {
   const [, setLocation] = useLocation();
-  const { userId, likedIds, toggleLike, setSelectedOutfit } = useFit();
+  const { likedIds, toggleLike, setSelectedOutfit } = useFit();
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getLikedOutfits(userId)
+    getLikedOutfits()
       .then(setSavedOutfits)
       .catch(() => setSavedOutfits([]))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     setSavedOutfits(prev => prev.filter(o => likedIds.has(o.id)));
