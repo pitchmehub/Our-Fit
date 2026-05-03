@@ -38,6 +38,20 @@ export default function ResultsScreen() {
   const [conceptsLoaded, setConceptsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    spin.start();
+    return () => spin.stop();
+  }, [spinAnim]);
 
   useEffect(() => {
     if (!capturedImage) {
@@ -157,7 +171,21 @@ export default function ResultsScreen() {
 
       {!conceptsLoaded ? (
         <View style={styles.loadingCenter}>
-          <View style={styles.loadingRing} />
+          <Animated.View
+            style={[
+              styles.loadingRing,
+              {
+                transform: [
+                  {
+                    rotate: spinAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["0deg", "360deg"],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
           <Text style={styles.loadingText}>Criando seus looks...</Text>
           <Text style={styles.loadingSub}>Isso leva alguns segundos</Text>
         </View>

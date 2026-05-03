@@ -51,8 +51,8 @@ router.post("/outfits/analyze", async (req, res) => {
   const genderCtx = getGenderContext(gender);
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4.1",
-    max_completion_tokens: 2500,
+    model: "gpt-4.1-mini",
+    max_completion_tokens: 1500,
     messages: [
       {
         role: "user",
@@ -123,7 +123,7 @@ router.post("/outfits/generate-image", async (req, res) => {
   const prompt = `Streetwear fashion flat lay, perfectly centered overhead top-down view on a clean white background. All clothing items fully visible, nothing cropped or cut off. ${concept.imagePrompt}. Items neatly arranged: main piece prominently in center, supporting pieces spread around it. No people, no mannequins, no body parts. Professional studio fashion photography, sharp and bright lighting, Pinterest aesthetic.`;
 
   try {
-    const buffer = await generateImageBuffer(prompt, "1024x1024", "dall-e-3");
+    const buffer = await generateImageBuffer(prompt, "512x512", "dall-e-2");
     const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
     const result: OutfitResult = { ...rest, image: buffer.toString("base64") };
     res.json({ outfit: result });
@@ -132,7 +132,7 @@ router.post("/outfits/generate-image", async (req, res) => {
     if (errMsg.includes("safety") || errMsg.includes("400") || errMsg.includes("content")) {
       try {
         const safePrompt = `Fashion flat lay, overhead view on white background. ${concept.imagePrompt}. All items fully visible. No people.`;
-        const buffer2 = await generateImageBuffer(safePrompt, "1024x1024", "dall-e-3");
+        const buffer2 = await generateImageBuffer(safePrompt, "512x512", "dall-e-2");
         const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
         const result: OutfitResult = { ...rest, image: buffer2.toString("base64") };
         res.json({ outfit: result });
@@ -162,8 +162,8 @@ router.post("/outfits/explore", async (req, res) => {
   const genderCtx = getGenderContext(gender);
 
   const conceptsResponse = await openai.chat.completions.create({
-    model: "gpt-4.1",
-    max_completion_tokens: 2000,
+    model: "gpt-4.1-mini",
+    max_completion_tokens: 1500,
     messages: [
       {
         role: "user",

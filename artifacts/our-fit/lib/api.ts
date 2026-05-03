@@ -36,11 +36,15 @@ export async function analyzeOutfitConcepts(
   imageBase64: string,
   gender?: string | null
 ): Promise<{ concepts: OutfitConcept[]; itemDescription: string }> {
-  const response = await fetch(`${getBaseUrl()}/api/outfits/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageBase64, gender: gender ?? undefined }),
-  });
+  const response = await fetchWithTimeout(
+    `${getBaseUrl()}/api/outfits/analyze`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64, gender: gender ?? undefined }),
+    },
+    60000
+  );
   if (!response.ok) throw new Error(`analyze failed: ${response.status}`);
   return response.json() as Promise<{ concepts: OutfitConcept[]; itemDescription: string }>;
 }
@@ -49,11 +53,15 @@ export async function analyzeOutfitConcepts(
 export async function generateOutfitImage(
   concept: OutfitConcept
 ): Promise<Outfit> {
-  const response = await fetch(`${getBaseUrl()}/api/outfits/generate-image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ concept }),
-  });
+  const response = await fetchWithTimeout(
+    `${getBaseUrl()}/api/outfits/generate-image`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concept }),
+    },
+    60000
+  );
   if (!response.ok) throw new Error(`image gen failed: ${response.status}`);
   const data = await response.json() as { outfit: Outfit };
   return data.outfit;
