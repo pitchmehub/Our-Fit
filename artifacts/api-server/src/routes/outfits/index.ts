@@ -36,7 +36,7 @@ function getGenderContext(gender: string | undefined): string {
   return "neutro/unissex. Priorize peças versáteis de streetwear.";
 }
 
-// Step 1: analyze photo → return concepts only (fast ~5-8s)
+// Step 1: analyze photo + generate concepts in a single vision call (fast ~4-6s)
 router.post("/outfits/analyze", async (req, res) => {
   const { imageBase64, gender } = req.body as {
     imageBase64: string;
@@ -48,9 +48,11 @@ router.post("/outfits/analyze", async (req, res) => {
     return;
   }
 
-  const visionResponse = await openai.chat.completions.create({
+  const genderCtx = getGenderContext(gender);
+
+  const response = await openai.chat.completions.create({
     model: "gpt-4.1",
-    max_completion_tokens: 400,
+    max_completion_tokens: 2500,
     messages: [
       {
         role: "user",
@@ -61,52 +63,42 @@ router.post("/outfits/analyze", async (req, res) => {
           },
           {
             type: "text",
-            text: "Analyze this clothing item or accessory. Identify: type, color(s), material if visible, aesthetic (streetwear, athletic, etc.). Be specific. 2-3 sentences max.",
+            text: `Você é um stylist de streetwear para público ${genderCtx}
+
+Analise a peça de roupa na imagem e crie 6 looks streetwear distintos usando ela como base.
+
+Retorne APENAS um JSON válido com este formato exato:
+{
+  "itemDescription": "descrição curta da peça (cor, tipo, material, estética) em 1-2 frases",
+  "concepts": [
+    {
+      "title": "Nome do look (2-3 palavras)",
+      "style": "Estilo em 1 frase",
+      "items": ["a peça fotografada aqui", "item 2", "item 3", "item 4"],
+      "tags": ["tag1", "tag2", "tag3"],
+      "imagePrompt": "Flat lay top-down: [descreva a peça base centralizada e os outros itens dispostos ao redor, com cores exatas de cada peça]"
+    }
+  ]
+}`,
           },
         ],
       },
     ],
   });
 
-  const itemDescription =
-    visionResponse.choices[0]?.message?.content ?? "A streetwear clothing item";
-
-  const genderCtx = getGenderContext(gender);
-
-  const conceptsResponse = await openai.chat.completions.create({
-    model: "gpt-4.1",
-    max_completion_tokens: 2000,
-    messages: [
-      {
-        role: "user",
-        content: `Você é um stylist de streetwear para público ${genderCtx}
-
-A PEÇA BASE (item fotografado): "${itemDescription}"
-
-REGRA: Em TODOS os 6 looks, a peça base DEVE aparecer como protagonista. Os outros itens completam o look ao redor dela.
-
-Gere 6 looks streetwear distintos. Retorne APENAS um JSON válido:
-[
-  {
-    "title": "Nome do look (2-3 palavras)",
-    "style": "Estilo em 1 frase",
-    "items": ["peça base aqui", "item 2", "item 3", "item 4"],
-    "tags": ["tag1", "tag2", "tag3"],
-    "imagePrompt": "Flat lay overhead: a peça base centralizada, rodeada pelas outras peças. Descreva as cores e disposição"
-  }
-]`,
-      },
-    ],
-  });
-
-  const conceptsText = conceptsResponse.choices[0]?.message?.content ?? "[]";
-  const jsonMatch = conceptsText.match(/\[[\s\S]*\]/);
+  const text = response.choices[0]?.message?.content ?? "{}";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  let itemDescription = "A streetwear clothing item";
   let concepts: OutfitConcept[] = [];
 
   if (jsonMatch) {
     try {
-      const parsed = JSON.parse(jsonMatch[0]) as Omit<OutfitConcept, "id" | "basePieceDescription">[];
-      concepts = parsed.map((c, i) => ({
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        itemDescription: string;
+        concepts: Omit<OutfitConcept, "id" | "basePieceDescription">[];
+      };
+      itemDescription = parsed.itemDescription ?? itemDescription;
+      concepts = (parsed.concepts ?? []).map((c, i) => ({
         ...c,
         id: `outfit-${Date.now()}-${i}`,
         basePieceDescription: itemDescription,
@@ -128,19 +120,19 @@ router.post("/outfits/generate-image", async (req, res) => {
     return;
   }
 
-  const prompt = `High-end streetwear fashion flat lay on clean white background. Overhead bird's eye view. Must include: ${concept.basePieceDescription}. ${concept.imagePrompt}. Main piece centered, others arranged around. No people, no mannequins. Professional fashion photography, Pinterest aesthetic, perfect lighting.`;
+  const prompt = `Streetwear fashion flat lay, perfectly centered overhead top-down view on a clean white background. All clothing items fully visible, nothing cropped or cut off. ${concept.imagePrompt}. Items neatly arranged: main piece prominently in center, supporting pieces spread around it. No people, no mannequins, no body parts. Professional studio fashion photography, sharp and bright lighting, Pinterest aesthetic.`;
 
   try {
-    const buffer = await generateImageBuffer(prompt, "1024x1024");
+    const buffer = await generateImageBuffer(prompt, "1024x1024", "dall-e-3");
     const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
     const result: OutfitResult = { ...rest, image: buffer.toString("base64") };
     res.json({ outfit: result });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    if (errMsg.includes("safety") || errMsg.includes("400")) {
+    if (errMsg.includes("safety") || errMsg.includes("400") || errMsg.includes("content")) {
       try {
-        const safePrompt = `Fashion flat lay photography. ${concept.imagePrompt}. Clean white background. No people. Streetwear clothing items arranged neatly.`;
-        const buffer2 = await generateImageBuffer(safePrompt, "1024x1024");
+        const safePrompt = `Fashion flat lay, overhead view on white background. ${concept.imagePrompt}. All items fully visible. No people.`;
+        const buffer2 = await generateImageBuffer(safePrompt, "1024x1024", "dall-e-3");
         const { imagePrompt: _ip, basePieceDescription: _bp, ...rest } = concept;
         const result: OutfitResult = { ...rest, image: buffer2.toString("base64") };
         res.json({ outfit: result });

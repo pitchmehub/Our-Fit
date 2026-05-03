@@ -14,7 +14,7 @@ import { Outfit } from "@/contexts/FitContext";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48) / 2;
-const CARD_HEIGHT = CARD_WIDTH * 1.4;
+const CARD_HEIGHT = CARD_WIDTH;
 
 interface Props {
   outfit: Outfit;
