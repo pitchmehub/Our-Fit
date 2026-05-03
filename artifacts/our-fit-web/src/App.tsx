@@ -8,6 +8,7 @@ import { Component, ReactNode } from "react";
 
 import NotFound from "@/pages/not-found";
 import SignInPage from "@/pages/sign-in";
+import SsoCallbackPage from "@/pages/sso-callback";
 import OnboardingPage from "@/pages/onboarding";
 import HomePage from "@/pages/home";
 import ResultsPage from "@/pages/results";
@@ -40,6 +41,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={SignInPage} />
+      <Route path="/sso-callback" component={SsoCallbackPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/home" component={HomePage} />
       <Route path="/results" component={ResultsPage} />
