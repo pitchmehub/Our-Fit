@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { likeOutfit, unlikeOutfit, Outfit } from "@/lib/api";
+import { getDeviceId } from "@/lib/device";
 
 export type Gender = "Masculino" | "Feminino" | null;
 
 interface FitContextType {
+  userId: string;
   capturedImage: string | null;
   setCapturedImage: (img: string | null) => void;
   itemDescription: string;
@@ -17,12 +19,13 @@ interface FitContextType {
   setGender: (g: Gender) => void;
   genderLoaded: boolean;
   likedIds: Set<string>;
-  toggleLike: (outfit: Outfit, userId: string) => void;
+  toggleLike: (outfit: Outfit) => void;
 }
 
 const FitContext = createContext<FitContextType | null>(null);
 
 export function FitProvider({ children }: { children: React.ReactNode }) {
+  const [userId] = useState<string>(() => getDeviceId());
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [itemDescription, setItemDescription] = useState<string>("");
   const [currentOutfits, setCurrentOutfits] = useState<Outfit[]>([]);
@@ -56,7 +59,7 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
     setCurrentOutfits((prev) => prev.map((o) => (o.id === outfit.id ? outfit : o)));
   };
 
-  const toggleLike = async (outfit: Outfit, userId: string) => {
+  const toggleLike = async (outfit: Outfit) => {
     const isLiked = likedIds.has(outfit.id);
     const newSet = new Set(likedIds);
     if (isLiked) {
@@ -73,6 +76,7 @@ export function FitProvider({ children }: { children: React.ReactNode }) {
   return (
     <FitContext.Provider
       value={{
+        userId,
         capturedImage,
         setCapturedImage,
         itemDescription,
